@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistan AI - Akıllı Asistan</title>
+    
+    <!-- Stil ve Font Dosyaları -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* ==========================================================================
+           CSS DEĞİŞKENLERİ VE TEMEL AYARLAR
+           ========================================================================== */
+        :root { 
+            --bg: #0f172a; 
+            --glass: rgba(30, 41, 59, 0.7); 
+            --border: rgba(255, 255, 255, 0.1); 
+            --a1: #8b5cf6; 
+            --a2: #3b82f6; 
+            --txt: #f8fafc; 
+            --muted: #94a3b8; 
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg); 
+            color: var(--txt); 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(139,92,246,0.15), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(59,130,246,0.15), transparent 25%); 
+        }
+
+        /* ==========================================================================
+           ARKA PLAN EFEKTLERİ (ORBS)
+           ========================================================================== */
+        .orb { 
+            position: absolute; 
+            border-radius: 50%; 
+            filter: blur(60px); 
+            z-index: -1; 
+            opacity: 0.6; 
+            animation: float 12s infinite alternate ease-in-out; 
+        }
+        .orb-1 { width: 300px; height: 300px; background: var(--a1); top: 10%; left: 10%; }
+        .orb-2 { width: 400px; height: 400px; background: var(--a2); bottom: 10%; right: 10%; animation-delay: -6s; }
+        
+        @keyframes float { 
+            0% { transform: translate(0, 0) scale(1); } 
+            100% { transform: translate(30px, 50px) scale(1.1); } 
+        }
+
+        /* ==========================================================================
+           ANA SOHBET ARAYÜZÜ (CHAT CONTAINER)
+           ========================================================================== */
+        .chat-container { 
+            width: 100%; 
+            max-width: 500px; 
+            height: 90vh; 
+            background: var(--glass); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid var(--border); 
+            border-radius: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); 
+            overflow: hidden; 
+            position: relative; 
+        }
+
+        /* Üst Başlık (Header) */
+        .header { 
+            padding: 18px 20px; 
+            border-bottom: 1px solid var(--border); 
+            background: rgba(15,23,42,0.4); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+        }
+        
+        .ai-av { 
+            width: 48px; height: 48px; border-radius: 50%; 
+            background: linear-gradient(135deg, var(--a1), var(--a2)); 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 1.3rem; box-shadow: 0 0 20px rgba(139,92,246,0.4); position: relative; 
+        }
+        .ai-av::after { 
+            content: ''; position: absolute; width: 100%; height: 100%; 
+            border-radius: 50%; border: 2px solid var(--a1); animation: pulse 2s infinite; 
+        }
+        @keyframes pulse { 
+            0% { transform: scale(1); opacity: 0.8; } 
+            100% { transform: scale(1.5); opacity: 0; } 
+        }
+        
+        .h-title { font-weight: 800; font-size: 1.4rem; letter-spacing: 1px; }
+        .h-sub { font-size: 0.8rem; color: var(--muted); }
+        
+        .header-actions { margin-left: auto; display: flex; gap: 8px; }
+        .header-actions button { 
+            background: rgba(255,255,255,0.08); border: 1px solid var(--border); 
+            color: var(--muted); width: 38px; height: 38px; border-radius: 50%; 
+            cursor: pointer; font-size: 0.9rem; transition: 0.3s; 
+            display: flex; align-items: center; justify-content: center; 
+        }
+        .header-actions button:hover { background: rgba(255,255,255,0.15); color: var(--txt); }
+
+        /* Mesajlaşma Alanı (Chat Box) */
+        .chat-box { 
+            flex: 1; padding: 20px; overflow-y: auto; display: flex; 
+            flex-direction: column; gap: 16px; scrollbar-width: thin; 
+            scrollbar-color: rgba(255,255,255,0.1) transparent; 
+        }
+        
+        .message { 
+            max-width: 85%; padding: 14px 18px; border-radius: 18px; 
+            font-size: 0.95rem; line-height: 1.5; 
+            animation: slideUp 0.4s cubic-bezier(0.175,0.885,0.32,1.275); 
+        }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(20px) scale(0.9); } 
+            to { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+        
+        .user-msg { 
+            align-self: flex-end; 
+            background: linear-gradient(135deg, var(--a2), #1e40af); 
+            color: white; border-bottom-right-radius: 5px; 
+        }
+        .ai-msg { 
+            align-self: flex-start; 
+            background: rgba(255,255,255,0.05); 
+            border-bottom-left-radius: 5px; border: 1px solid var(--border); 
+        }
+
+        /* Girdi Alanı (Input Area) */
+        .input-area { 
+            padding: 16px 20px; background: rgba(15,23,42,0.6); 
+            border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: center; 
+        }
+        
+        .mic-btn { 
+            width: 50px; height: 50px; border-radius: 50%; border: none; 
+            background: linear-gradient(135deg, var(--a1), var(--a2)); 
+            color: white; font-size: 1.1rem; cursor: pointer; transition: 0.3s; 
+            box-shadow: 0 8px 16px rgba(139,92,246,0.3); flex-shrink: 0; 
+            display: flex; justify-content: center; align-items: center; 
+        }
+        .mic-btn:hover { transform: translateY(-2px) scale(1.05); }
+        .mic-btn.recording { animation: recPulse 1s infinite alternate; background: #ef4444; }
+        @keyframes recPulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        
+        .text-input { 
+            flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+            padding: 14px 18px; border-radius: 25px; color: white; 
+            font-family: 'Outfit', sans-serif; font-size: 0.95rem; outline: none; transition: 0.3s; 
+        }
+        .text-input:focus { background: rgba(255,255,255,0.1); border-color: var(--a2); }
+        .text-input::placeholder { color: rgba(255,255,255,0.3); }
+        
+        .send-btn { 
+            background: transparent; border: none; color: var(--a2); 
+            font-size: 1.4rem; cursor: pointer; transition: 0.3s; 
+        }
+        .send-btn:hover { color: white; }
+
+        /* ==========================================================================
+           6. GEÇMİŞ PANELİ (HISTORY PANEL)
+           ========================================================================== */
+        .history-panel { 
+            position: absolute; top: 0; right: -100%; width: 100%; height: 100%; 
+            background: rgba(15,23,42,0.97); backdrop-filter: blur(20px); 
+            transition: right 0.4s ease; z-index: 10; display: flex; 
+            flex-direction: column; border-radius: 30px; 
+        }
+        .history-panel.open { right: 0; }
+        
+        .hp-header { padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+        .hp-header h3 { flex: 1; font-size: 1.2rem; }
+        
+        .hp-close { 
+            background: rgba(255,255,255,0.1); border: none; color: white; 
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; 
+        }
+        
+        .hp-body { flex: 1; overflow-y: auto; padding: 16px; }
+        .hp-item { padding: 12px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 14px; }
+        .hp-time { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+        .hp-user { color: var(--a2); margin-bottom: 4px; font-size: 0.9rem; }
+        .hp-ai { color: var(--muted); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Arkaplan Efektleri -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="chat-container">
+        <!-- Üst Başlık ve Kontroller -->
+        <div class="header">
+            <div class="ai-av"><i class="fa-solid fa-robot"></i></div>
+            <div>
+                <div class="h-title">Asistan AI</div>
+                <div class="h-sub">Bilgisayar Yönetim Asistanı</div>
+            </div>
+            <div class="header-actions">
+                <button id="memBtn" title="Hafıza"><i class="fa-solid fa-brain"></i></button>
+                <button id="histBtn" title="Sohbet Geçmişi"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                <button id="clearBtn" title="Sohbeti Temizle"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+
+        <!-- Sohbet Alanı -->
+        <div class="chat-box" id="chatBox">
+            <div class="message ai-msg">
+                Merhaba! Ben <b>Asistan AI</b>. 🧠 Artık seni <b>hatırlıyorum</b>!<br><br>
+                💡 Yeni komutlar:<br>
+                - <i>"Bunu unutma: kedileri severim"</i><br>
+                - <i>"Hakkımda ne biliyorsun?"</i><br>
+                - <i>"Sohbet geçmişi"</i><br>
+                - <i>"WhatsApp aç" • "Masaüstünü temizle"</i>
+            </div>
+        </div>
+
+        <!-- Gizli Geçmiş Paneli -->
+        <div class="history-panel" id="histPanel">
+            <div class="hp-header">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--a1)"></i>
+                <h3>Sohbet Geçmişi</h3>
+                <button class="hp-close" id="histClear" title="Tüm geçmişi sil" style="background:rgba(239,68,68,0.2); color:#ef4444; margin-right:6px">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+                <button class="hp-close" id="histClose"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="hp-body" id="histBody"></div>
+        </div>
+
+        <!-- Alt Girdi Alanı -->
+        <div class="input-area">
+            <button class="mic-btn" id="micBtn"><i class="fa-solid fa-microphone"></i></button>
+            <input type="text" id="textInput" class="text-input" placeholder="Komut yazın..." autocomplete="off">
+            <button class="send-btn" id="sendBtn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT ÇEKİRDEĞİ (Clean Code Architecture) -->
+    <script>
+        /**
+         * ASISTAN AI - MASAÜSTÜ ASİSTANI
+         * Modüler, ölçeklenebilir ve Temiz Kod (Clean Code) mimarisi ile düzenlenmiştir.
+         */
+
+        /* ==========================================================================
+           1. SİSTEM YAPILANDIRMASI (CONFIG)
+           ========================================================================== */
+        const CONFIG = {
+            API_URL: window.location.protocol.startsWith('http') ? window.location.origin : 'http://127.0.0.1:8000',
+            VOICE_LANG: 'tr-TR',
+            VOICE_PITCH: 1.1,
+            MAX_HISTORY_PREVIEW: 120 // Geçmişteki AI yanıtının kırpılma uzunluğu
+        };
+
+        /* ==========================================================================
+           2. DOM BİLEŞENLERİ (UI CONTROLS)
+           ========================================================================== */
+        const DOM = {
+            chatBox: document.getElementById('chatBox'),
+            textInput: document.getElementById('textInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            micBtn: document.getElementById('micBtn'),
+            
+            histPanel: document.getElementById('histPanel'),
+            histBody: document.getElementById('histBody'),
+            
+            btnMem: document.getElementById('memBtn'),
+            btnHist: document.getElementById('histBtn'),
+            btnClear: document.getElementById('clearBtn'),
+            btnHistClose: document.getElementById('histClose'),
+            btnHistClear: document.getElementById('histClear')
+        };
+
+        /* ==========================================================================
+           3. SES YÖNETİMİ (AUDIO ENGINE)
+           ========================================================================== */
+        const AudioEngine = {
+            speak(text) {
+                if (!('speechSynthesis' in window)) return;
+                
+                window.speechSynthesis.cancel(); 
+                
+                const cleanText = text.replace(/<[^>]*>/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                
+                utterance.lang = CONFIG.VOICE_LANG;
+                utterance.pitch = CONFIG.VOICE_PITCH;
+                
+                window.speechSynthesis.speak(utterance);
+            },
+            
+            initSpeechRecognition(onResultCallback) {
+                const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+                
+                if (!SpeechRec) {
+                    DOM.micBtn.style.display = 'none';
+                    return null;
+                }
+                
+                const rec = new SpeechRec();
+                rec.lang = CONFIG.VOICE_LANG;
+                
+                rec.onstart = () => {
+                    DOM.micBtn.classList.add('recording');
+                    DOM.textInput.placeholder = 'Sizi Dinliyorum...';
+                };
+                
+                rec.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    onResultCallback(transcript);
+                };
+                
+                rec.onend = () => {
+                    DOM.micBtn.classList.remove('recording');
+                    DOM.textInput.placeholder = 'Komut yazın...';
+                };
+                
+                DOM.micBtn.addEventListener('click', () => rec.start());
+                return rec;
+            }
+        };
+
+        /* ==========================================================================
+           4. ARAYÜZ YÖNETİMİ (UI MANAGER)
+           ========================================================================== */
+        const UIManager = {
+            addMessage(content, isUser) {
+                const div = document.createElement('div');
+                div.className = 'message ' + (isUser ? 'user-msg' : 'ai-msg');
+                div.innerHTML = content;
+                
+                DOM.chatBox.appendChild(div);
+                this.scrollToBottom();
+            },
+            
+            showLoading() {
+                const loadingId = 'loading-' + Date.now();
+                const div = document.createElement('div');
+                
+                div.className = 'message ai-msg';
+                div.id = loadingId;
+                div.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Düşünüyor...';
+                
+                DOM.chatBox.appendChild(div);
+                this.scrollToBottom();
+                
+                return loadingId;
+            },
+            
+            removeElement(id) {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            },
+            
+            clearChat() {
+                DOM.chatBox.innerHTML = '<div class="message ai-msg">Sohbet temizlendi. Beklemedeyim! 🚀</div>';
+            },
+            
+            scrollToBottom() {
+                DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+            },
+            
+            clearInput() {
+                DOM.textInput.value = '';
+            }
+        };
+
+        /* ==========================================================================
+           5. SUNUCU HABERLEŞME (API SERVICES)
+           ========================================================================== */
+        const API = {
+            async sendCommand(command) {
+                try {
+                    const response = await fetch(`${CONFIG.API_URL}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command })
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.response || `HTTP ${response.status}`);
+                    return data;
+                } catch (error) {
+                    throw new Error(error.message || 'Sunucuya ulaşılamadı');
+                }
+            },
+            
+            async getHistory() {
+                const response = await fetch(`${CONFIG.API_URL}/history`);
+                return await response.json();
+            },
+            
+            async clearHistory() {
+                await fetch(`${CONFIG.API_URL}/history`, { method: 'DELETE' });
+            }
+        };
+
+        /* ==========================================================================
+           6. ANA UYGULAMA MANTIĞI (APP CONTROLLER)
+           ========================================================================== */
+        const App = {
+            async handleUserCommand(commandText, useVoiceResponse = false) {
+                const cmd = commandText.trim();
+                if (!cmd) return;
+                
+                UIManager.addMessage(cmd, true);
+                UIManager.clearInput();
+                
+                const loadingId = UIManager.showLoading();
+                
+                try {
+                    const data = await API.sendCommand(cmd);
+                    
+                    UIManager.removeElement(loadingId);
+                    UIManager.addMessage(data.response, false);
+                    
+                    if (useVoiceResponse) {
+                        AudioEngine.speak(data.response);
+                    }
+                } catch (error) {
+                    UIManager.removeElement(loadingId);
+                    const msg = (error && error.message) ? error.message : String(error);
+                    UIManager.addMessage('Hata: ' + msg, false);
+                }
+            },
+            
+            async openHistoryPanel() {
+                DOM.histPanel.classList.add('open');
+                DOM.histBody.innerHTML = '<p style="text-align:center;padding:20px;color:var(--muted);"><i class="fa-solid fa-spinner fa-spin"></i> Geçmiş Yükleniyor...</p>';
+                
+                try {
+                    const data = await API.getHistory();
+                    DOM.histBody.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        DOM.histBody.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Kayıtlı hiçbir sohbet geçmişiniz bulunmuyor.</p>';
+                        return;
+                    }
+                    
+                    data.reverse().forEach(historyItem => {
+                        const aiText = historyItem.ai.replace(/<[^>]*>/g, '').substring(0, CONFIG.MAX_HISTORY_PREVIEW);
+                        
+                        DOM.histBody.innerHTML += `
+                            <div class="hp-item">
+                                <div class="hp-time">${historyItem.time}</div>
+                                <div class="hp-user">👤 ${historyItem.user}</div>
+                                <div class="hp-ai">🤖 ${aiText}...</div>
+                            </div>
+                        `;
+                    });
+                } catch (e) {
+                    DOM.histBody.innerHTML = '<p style="color:#ef4444;text-align:center;padding:40px">Geçmiş sunucusuna ulaşılamıyor.</p>';
+                }
+            },
+            
+            async deleteHistory() {
+                if (confirm('Tüm sohbet geçmişi sunucudan kalıcı olarak silinecek. Onaylıyor musunuz?')) {
+                    try {
+                        await API.clearHistory();
+                        DOM.histBody.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Geçmiş veritabanından başarıyla silindi.</p>';
+                    } catch (e) {
+                        alert('Silme işlemi başarısız oldu!');
+                    }
+                }
+            },
+            
+            bindEvents() {
+                // Gönderme İşlemleri (Tıklama ve Enter)
+                DOM.sendBtn.addEventListener('click', () => this.handleUserCommand(DOM.textInput.value, false));
+                DOM.textInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.handleUserCommand(DOM.textInput.value, false);
+                });
+                
+                // Üst Panel Kontrolleri
+                DOM.btnMem.addEventListener('click', () => this.handleUserCommand('hakkımda ne biliyorsun', false));
+                DOM.btnClear.addEventListener('click', () => UIManager.clearChat());
+                
+                // Sohbet Geçmişi Kontrolleri
+                DOM.btnHist.addEventListener('click', () => this.openHistoryPanel());
+                DOM.btnHistClose.addEventListener('click', () => DOM.histPanel.classList.remove('open'));
+                DOM.btnHistClear.addEventListener('click', () => this.deleteHistory());
+                
+                // Sesli Komut (Mikrofon) İşleyicisi
+                AudioEngine.initSpeechRecognition((transcript) => {
+                    this.handleUserCommand(transcript, true);
+                });
+            },
+            
+            init() {
+                this.bindEvents();
+            }
+        };
+
+        // DOM Yüklendiğinde Uygulamayı Başlat
+        window.onload = () => App.init();
+    </script>
+</body>
+</html>
